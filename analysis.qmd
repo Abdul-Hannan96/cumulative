@@ -1,0 +1,38 @@
+---
+title: "Cumulative"
+format: html
+#| message: false
+execute: 
+  echo: false
+---
+
+
+```{r}
+library(primer.data)
+library(tidyverse) 
+x <- ces %>% 
+  filter(year == 2020) %>%
+  select(approval, education, faminc, ideology) %>%
+  drop_na() %>%
+  slice_sample(n = 2000)
+x
+x %>% summary()
+
+```
+
+
+```{r}
+x %>%
+  ggplot(aes(x = ideology, fill = approval)) +
+  geom_bar() +
+  labs(title = "Presidential Approval by Ideology",
+       x = "Political Ideology",
+       y = "Count",
+       fill = "Approval")
+x
+
+```
+
+
+# Summary:
+Public opinion about political leaders often depends on where people fall on the ideological spectrum. Using data from the 2020 Cooperative Election Study, one of the largest political surveys in the U.S., we explore how presidential approval varies across different ideological groups. However, because the CES data may not fully represent all U.S. adults, our estimates of how ideology relates to presidential approval might be biased.
