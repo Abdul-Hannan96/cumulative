@@ -1,38 +1,124 @@
 ---
 title: "Cumulative"
 format: html
-#| message: false
 execute: 
   echo: false
+  message: false
 ---
-
-
-```{r}
-library(primer.data)
-library(tidyverse) 
-x <- ces %>% 
-  filter(year == 2020) %>%
-  select(approval, education, faminc, ideology) %>%
-  drop_na() %>%
-  slice_sample(n = 2000)
-x
-x %>% summary()
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,      # Hide code
+  message = FALSE,   # Suppress messages (e.g., package loading)
+  warning = FALSE   # Suppress warnings
+  
+)
 ```
 
+```{r}
+library(broom)
+library(primer.data)
+library(tidyverse) 
+library(MASS)
+library(easystats)
+library(gt)
+library(marginaleffects)
+
+```
+```{r}
+data("ces", package = "primer.data")
+x <- ces %>% 
+  filter(year == 2020) %>% 
+  dplyr::select(approval, education, faminc, ideology) %>% 
+  drop_na() %>% 
+  slice_sample(n = 2000)
+
+```
+$$
+P(Y \leq k) = \frac{1}{1 + e^{-(\alpha_k - \beta_1 X_1 - \beta_2 X_2)}}
+$$
+
+with
+
+$$
+Y \sim \text{Ordinal}(\boldsymbol{\rho}), \quad \boldsymbol{\rho} = (\rho_1, \rho_2, \dots, \rho_K)
+$$
+
+```{r}
+
+#| cache: true
+fit_approval <- polr(
+  formula = approval ~ ideology + faminc + education,
+  data = x
+)
+tidy_approval <- tidy(fit_approval, conf.int = TRUE)
+```
 
 ```{r}
 x %>%
   ggplot(aes(x = ideology, fill = approval)) +
   geom_bar() +
-  labs(title = "Presidential Approval by Ideology",
-       x = "Political Ideology",
-       y = "Count",
-       fill = "Approval")
-x
+  labs(
+    title = "Presidential Approval by Ideology",
+    x = "Political Ideology",
+    y = "Count",
+    fill = "Approval"
+  ) +
+  theme_minimal() +  # optional: clean theme
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+
+```
+<br>
+<br>
+ 
+**Fitted LaTeX Model with Estimates**
+$$
+\log\left[ \frac{P(\text{approval} \leq \text{Strongly Disapprove})}{1 - P(\text{approval} \leq \text{Strongly Disapprove})} \right] = 2.26 + 0.61(\text{ideology}_\text{Liberal}) + \dots
+$$
+
+<br>
+<br>
+
+```{r}
+
+
+tidy_approval |>
+  dplyr::select(term, estimate, conf.low, conf.high) |>
+  gt() |>
+  cols_label(
+    term = "Variable",
+    estimate = "Estimate",
+    conf.low = "Lower CI",
+    conf.high = "Upper CI"
+  ) |>
+  tab_header(
+    title = "Estimates from Ordinal Logistic Regression",
+    subtitle = "Data from 2020 Cooperative Election Study"
+  )
 
 ```
 
+<br>
+<br>
+
+```{r}
+plot_predictions(fit_approval, condition = c("ideology", "education")) +
+  labs(
+    title = "Presidential Approval by Ideology and Education",
+    subtitle = "Approval increases with conservatism, but education patterns vary within each ideology group",
+    caption = "Source: 2020 Cooperative Election Study",
+    x = "Ideology",
+    y = "Predicted Approval Probability"
+  ) +
+  theme_minimal() +  # optional: clean theme
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
 
 # Summary:
-Public opinion about political leaders often depends on where people fall on the ideological spectrum. Using data from the 2020 Cooperative Election Study, one of the largest political surveys in the U.S., we explore how presidential approval varies across different ideological groups. However, because the CES data may not fully represent all U.S. adults, our estimates of how ideology relates to presidential approval might be biased.
+Public opinion about political leaders often depends on where people fall on the ideological spectrum. Using data from the 2020 Cooperative Election Study, one of the largest political surveys in the U.S., we explore how presidential approval varies across different ideological groups. However, because the CES data may not fully represent all U.S. adults, our estimates of how ideology relates to presidential approval might be biased.We model presidential approval as an ordinal function of ideology and education. This structure allows us to estimate how changes in political beliefs and education levels shift the likelihood of falling into different approval categories.On average, moderates are about 20 percentage points more likely to approve of the president than very liberals, with a 95% confidence interval ranging from 17 to 23 points.
+
